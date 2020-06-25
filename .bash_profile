@@ -1,5 +1,6 @@
 alias vim='mvim -v'
 export PATH=:$./usr/local/bin/aws:$PATH
+export PATH=$PATH:~/prometheus-2.14.0.darwin-amd64
 
 
 export NVM_DIR="$HOME/.nvm"

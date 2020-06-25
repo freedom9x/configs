@@ -42,17 +42,39 @@
 (use-package linum-relative
   :ensure t
   :config
-  (setq linum-relative-current-symbol "->")
+  (setq linum-relative-current-symbol "")
   (setq linum-relative-format " %4s ")
   (linum-relative-on)
  )
 ;; (require 'linum-relative)
 
+(setq-default indent-tabs-mode nil)
 (setq tab-width 2)
 (global-visual-line-mode t)
 ;;show parent mode for () {}
 (show-paren-mode 1)
+;;indent setup
+(defun my-setup-indent (n)
+  ;; java/c/c++
+  (setq-local c-basic-offset n)
+  ;; web development
+  (setq-local coffee-tab-width n) ; coffeescript
+  (setq-local javascript-indent-level n) ; javascript-mode
+  (setq-local js-indent-level n) ; js-mode
+  (setq-local js2-basic-offset n) ; js2-mode, in latest js2-mode, it's alias of js-indent-level
+  (setq-local web-mode-markup-indent-offset n) ; web-mode, html tag in html file
+  (setq-local web-mode-css-indent-offset n) ; web-mode, css in html file
+  (setq-local web-mode-code-indent-offset n) ; web-mode, js code in html file
+  (setq-local css-indent-offset n) ; css-mode
+  )
 
+(defun my-personal-code-style ()
+  (interactive)
+  (message "My personal code style!")
+  ;; use space instead of tab
+  (setq indent-tabs-mode nil)
+  ;; indent 2 spaces width
+  (my-setup-indent 2))
 ;; ivy
 (use-package ivy :ensure t
   :diminish (ivy-mode . "") ; does not display ivy in the modeline
@@ -136,7 +158,22 @@
 (use-package company               
   :ensure t
   :config (global-company-mode t))
-  
+
+;;elm setup 
+(setq
+  dotspacemacs-configuration-layers
+   '(
+    (elm :variables
+        elm-sort-imports-on-save t
+        elm-format-on-save t
+        elm-format-command "elm-format"
+        elm-reactor-arguments '("--port" "8000")
+        elm-interactive-command '("elm" "repl")
+        elm-reactor-command '("elm" "reactor")
+        elm-compile-command '("elm" "make")
+        elm-package-command '("elm" "package"))
+    )
+)
 
 ;; Fancy titlebar for MacOS
 (add-to-list 'default-frame-alist '(ns-transparent-titlebar . t))
@@ -150,7 +187,7 @@
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
    (quote
-    (php-mode web-mode exec-path-from-shell flycheck js2-refactor xref-js2 js2-mode counsel-projectile ivy-rich ivy linum-relative general which-key helm use-package monokai-theme gruvbox-theme evil diminish))))
+    (origami php-mode web-mode exec-path-from-shell flycheck js2-refactor xref-js2 js2-mode counsel-projectile ivy-rich ivy linum-relative general which-key helm use-package monokai-theme gruvbox-theme evil diminish))))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
@@ -173,7 +210,10 @@
                 (define-key evil-normal-state-local-map (kbd "R") 'neotree-rename-node)
                 (define-key evil-normal-state-local-map (kbd "D") 'neotree-delete-node)
                 (define-key evil-normal-state-local-map (kbd "C") 'neotree-create-node)
-                (define-key evil-normal-state-local-map (kbd "H") 'neotree-hidden-file-toggle))))
+                (define-key evil-normal-state-local-map (kbd "H") 'neotree-hidden-file-toggle)
+                (define-key evil-normal-state-local-map (kbd "s") 'neotree-enter-vertical-split)
+                (define-key evil-normal-state-local-map (kbd "S") 'neotree-enter-horizontal-split)
+                )))
 		
 
 ;; javascript
@@ -210,6 +250,7 @@
   (add-hook 'web-mode-hook
           (lambda ()
             (add-hook 'after-save-hook #'eslint-fix-file-and-revert)))
+  (add-hook 'web-mode-hook 'my-personal-code-style)
 )
 
 (use-package exec-path-from-shell
@@ -247,6 +288,82 @@
   (add-to-list 'auto-mode-alist '("\\.\\(?:php\\|phtml\\)\\'" . php-mode))  
   (add-hook 'php-mode-hook 'php-enable-psr2-coding-style)
  )
+
+(use-package origami
+  ;; :disabled
+  :ensure t
+  :config
+  ;;origami https://github.com/gregsexton/origami.el
+  ;; (use-package origami)
+  (global-origami-mode 1)
+
+  (defun nin-origami-toggle-node ()
+    (interactive)
+    (if (equal major-mode 'org-mode)
+	(org-cycle)
+      (save-excursion ;; leave point where it is
+	(goto-char (point-at-eol))             ;; then go to the end of line
+	(origami-toggle-node (current-buffer) (point)))))                 ;; and try to fold
+
+  (add-hook 'prog-mode-hook
+	    (lambda ()
+	      ;; parsers see in variable origami-parser-alist
+	      (setq-local origami-fold-style 'triple-braces)
+	      (origami-mode)
+	      (origami-close-all-nodes (current-buffer))
+	      ))
+  ;; mapping works only in normal mode
+  (evil-define-key 'normal prog-mode-map (kbd "<tab>") 'nin-origami-toggle-node)
+  ;; (evil-define-key 'normal php-mode-map (kbd "TAB") 'nin-origami-toggle-node)
+  ;; (evil-define-key 'normal php-mode-map (kbd "<tab>") 'nin-origami-toggle-node)
+
+  (define-key evil-normal-state-map "za" 'origami-forward-toggle-node)
+  (define-key evil-normal-state-map "zR" 'origami-close-all-nodes)
+  (define-key evil-normal-state-map "zM" 'origami-open-all-nodes)
+  (define-key evil-normal-state-map "zr" 'origami-close-node-recursively)
+  (define-key evil-normal-state-map "zm" 'origami-open-node-recursively)
+  (define-key evil-normal-state-map "zo" 'origami-show-node)
+  (define-key evil-normal-state-map "zc" 'origami-close-node)
+  (define-key evil-normal-state-map "zj" 'origami-forward-fold)
+  (define-key evil-normal-state-map "zk" 'origami-previous-fold)
+  (define-key evil-visual-state-map "zf"
+    '(lambda ()
+       "create fold and add comment to it"
+       (interactive)
+       (setq start (region-beginning))
+       (setq end (region-end))
+       (deactivate-mark)
+       (and (< end start)
+	    (setq start (prog1 end (setq end start))))
+       (goto-char start)
+       (beginning-of-line)
+       (indent-according-to-mode)
+       (if (equal major-mode 'emacs-lisp-mode)
+	   (insert ";; ")
+	 ;; (indent-according-to-mode)
+	 (insert comment-start " "))
+
+       ;; (insert comment-start " ")
+       (setq start (point))
+       (insert "Folding" " {{{")
+       (newline-and-indent)
+       (goto-char end)
+       (end-of-line)
+       (and (not (bolp))
+	    (eq 0 (forward-line))
+	    (eobp)
+	    (insert ?\n))
+       (indent-according-to-mode)
+       (if (equal major-mode 'emacs-lisp-mode)
+	   (insert ";; }}}")
+
+	 (if (equal comment-end "")
+	     (insert comment-start " }}}")
+	   (insert comment-end "}}}")))
+       (newline-and-indent)
+       (goto-char start)
+       ))
+  )
 ;;KEY BINDDING
 (use-package general
   :ensure t
